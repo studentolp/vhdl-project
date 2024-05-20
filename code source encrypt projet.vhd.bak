@@ -1,0 +1,433 @@
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity encrypt is
+    port(
+        msg: in std_logic_vector(0 to 63);
+        cle: in std_logic_vector(0 to 63);
+        msg_cry: out std_logic_vector(0 to 63)
+    );
+end encrypt;
+
+architecture behavior of encrypt is
+
+    component initial_permutation
+        port(
+            msg: in std_logic_vector(0 to 63);
+            permuted_right_half: out std_logic_vector(0 to 31);
+            permuted_left_half: out std_logic_vector(0 to 31)
+        );
+    end component;
+
+    component key_permutation_1
+        port(
+            cle: in std_logic_vector(0 to 63);
+            permuted_left_cle: out std_logic_vector(0 to 27);
+            permuted_right_cle: out std_logic_vector(0 to 27)
+        );
+    end component;
+
+    component subkey_production
+        generic(
+            shifting_parameter: std_logic_vector(0 to 1);
+            left_or_right: std_logic_vector(0 to 0)
+        );
+        port(
+            left_cle_in: in std_logic_vector(0 to 27);
+            right_cle_in: in std_logic_vector(0 to 27);
+            subkey: out std_logic_vector(0 to 47);
+            left_cle_out: out std_logic_vector(0 to 27);
+            right_cle_out: out std_logic_vector(0 to 27)
+        );
+    end component;
+
+    component round
+        port(
+            left_plain: in std_logic_vector(0 to 31);
+            right_plain: in std_logic_vector(0 to 31);
+            subkey: in std_logic_vector(0 to 47);
+            left_data_out: out std_logic_vector(0 to 31);
+            right_data_out: out std_logic_vector(0 to 31)
+        );
+    end component;
+
+    component swap_left_right_64_bits
+        port(
+            msg_left: in std_logic_vector(0 to 31);
+            msg_right: in std_logic_vector(0 to 31);
+            msg_out_left: out std_logic_vector(0 to 31);
+            msg_out_right: out std_logic_vector(0 to 31)
+        );
+    end component;
+
+    component reverse_initial_permutation
+        port(
+            permuted_left_half: in std_logic_vector(0 to 31);
+            permuted_right_half: in std_logic_vector(0 to 31);
+            msg_cry: out std_logic_vector(0 to 63)
+        );
+    end component;
+
+    signal permuted_right_plain_text: std_logic_vector(0 to 31);
+    signal permuted_left_plain_text: std_logic_vector(0 to 31);
+    signal left_cle: std_logic_vector(0 to 27);
+    signal right_cle: std_logic_vector(0 to 27);
+    signal subkey1, subkey2, subkey3, subkey4, subkey5, subkey6, subkey7, subkey8, subkey9, subkey10, subkey11, subkey12, subkey13, subkey14, subkey15, subkey16: std_logic_vector(0 to 47);
+    signal left_cle_1, left_cle_2, left_cle_3, left_cle_4, left_cle_5, left_cle_6, left_cle_7, left_cle_8, left_cle_9, left_cle_10, left_cle_11, left_cle_12, left_cle_13, left_cle_14, left_cle_15, left_cle_16: std_logic_vector(0 to 27);
+    signal right_cle_1, right_cle_2, right_cle_3, right_cle_4, right_cle_5, right_cle_6, right_cle_7, right_cle_8, right_cle_9, right_cle_10, right_cle_11, right_cle_12, right_cle_13, right_cle_14, right_cle_15, right_cle_16: std_logic_vector(0 to 27);
+    signal left_plain_1, left_plain_2, left_plain_3, left_plain_4, left_plain_5, left_plain_6, left_plain_7, left_plain_8, left_plain_9, left_plain_10, left_plain_11, left_plain_12, left_plain_13, left_plain_14, left_plain_15, left_plain_16: std_logic_vector(0 to 31);
+    signal right_plain_1, right_plain_2, right_plain_3, right_plain_4, right_plain_5, right_plain_6, right_plain_7, right_plain_8, right_plain_9, right_plain_10, right_plain_11, right_plain_12, right_plain_13, right_plain_14, right_plain_15, right_plain_16: std_logic_vector(0 to 31);
+    signal swaped_plain_text_left, swaped_plain_text_right: std_logic_vector(0 to 31);
+
+begin
+
+    s1: initial_permutation port map(
+        msg => msg,
+        permuted_right_half => permuted_right_plain_text,
+        permuted_left_half => permuted_left_plain_text
+    );
+
+    s2: key_permutation_1 port map(
+        cle => cle,
+        permuted_left_cle => left_cle,
+        permuted_right_cle => right_cle
+    );
+
+    s3: subkey_production generic map(
+        shifting_parameter => "01",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle,
+        right_cle_in => right_cle,
+        subkey => subkey1,
+        left_cle_out => left_cle_1,
+        right_cle_out => right_cle_1
+    );
+
+    s4: round port map(
+        left_plain => permuted_left_plain_text,
+        right_plain => permuted_right_plain_text,
+        subkey => subkey1,
+        left_data_out => left_plain_1,
+        right_data_out => right_plain_1
+    );
+
+    s5: subkey_production generic map(
+        shifting_parameter => "01",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_1,
+        right_cle_in => right_cle_1,
+        subkey => subkey2,
+        left_cle_out => left_cle_2,
+        right_cle_out => right_cle_2
+    );
+
+    s6: round port map(
+        left_plain => left_plain_1,
+        right_plain => right_plain_1,
+        subkey => subkey2,
+        left_data_out => left_plain_2,
+        right_data_out => right_plain_2
+    );
+
+    s7: subkey_production generic map(
+        shifting_parameter => "10",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_2,
+        right_cle_in => right_cle_2,
+        subkey => subkey3,
+        left_cle_out => left_cle_3,
+        right_cle_out => right_cle_3
+    );
+
+    s8: round port map(
+        left_plain => left_plain_2,
+        right_plain => right_plain_2,
+        subkey => subkey3,
+        left_data_out => left_plain_3,
+        right_data_out => right_plain_3
+    );
+
+    s9: subkey_production generic map(
+        shifting_parameter => "10",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_3,
+        right_cle_in => right_cle_3,
+        subkey => subkey4,
+        left_cle_out => left_cle_4,
+        right_cle_out => right_cle_4
+    );
+
+    s10: round port map(
+        left_plain => left_plain_3,
+        right_plain => right_plain_3,
+        subkey => subkey4,
+        left_data_out => left_plain_4,
+        right_data_out => right_plain_4
+    );
+
+    s11: subkey_production generic map(
+        shifting_parameter => "10",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_4,
+        right_cle_in => right_cle_4,
+        subkey => subkey5,
+        left_cle_out => left_cle_5,
+        right_cle_out => right_cle_5
+    );
+
+    s12: round port map(
+        left_plain => left_plain_4,
+        right_plain => right_plain_4,
+        subkey => subkey5,
+        left_data_out => left_plain_5,
+        right_data_out => right_plain_5
+    );
+
+    s13: subkey_production generic map(
+        shifting_parameter => "10",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_5,
+        right_cle_in => right_cle_5,
+        subkey => sub
+
+key6,
+        left_cle_out => left_cle_6,
+        right_cle_out => right_cle_6
+    );
+
+    s14: round port map(
+        left_plain => left_plain_5,
+        right_plain => right_plain_5,
+        subkey => subkey6,
+        left_data_out => left_plain_6,
+        right_data_out => right_plain_6
+    );
+
+    s15: subkey_production generic map(
+        shifting_parameter => "01",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_6,
+        right_cle_in => right_cle_6,
+        subkey => subkey7,
+        left_cle_out => left_cle_7,
+        right_cle_out => right_cle_7
+    );
+
+    s16: round port map(
+        left_plain => left_plain_6,
+        right_plain => right_plain_6,
+        subkey => subkey7,
+        left_data_out => left_plain_7,
+        right_data_out => right_plain_7
+    );
+
+    s17: subkey_production generic map(
+        shifting_parameter => "10",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_7,
+        right_cle_in => right_cle_7,
+        subkey => subkey8,
+        left_cle_out => left_cle_8,
+        right_cle_out => right_cle_8
+    );
+
+    s18: round port map(
+        left_plain => left_plain_7,
+        right_plain => right_plain_7,
+        subkey => subkey8,
+        left_data_out => left_plain_8,
+        right_data_out => right_plain_8
+    );
+
+    s19: subkey_production generic map(
+        shifting_parameter => "01",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_8,
+        right_cle_in => right_cle_8,
+        subkey => subkey9,
+        left_cle_out => left_cle_9,
+        right_cle_out => right_cle_9
+    );
+
+    s20: round port map(
+        left_plain => left_plain_8,
+        right_plain => right_plain_8,
+        subkey => subkey9,
+        left_data_out => left_plain_9,
+        right_data_out => right_plain_9
+    );
+
+    s21: subkey_production generic map(
+        shifting_parameter => "10",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_9,
+        right_cle_in => right_cle_9,
+        subkey => subkey10,
+        left_cle_out => left_cle_10,
+        right_cle_out => right_cle_10
+    );
+
+    s22: round port map(
+        left_plain => left_plain_9,
+        right_plain => right_plain_9,
+        subkey => subkey10,
+        left_data_out => left_plain_10,
+        right_data_out => right_plain_10
+    );
+
+    s23: subkey_production generic map(
+        shifting_parameter => "10",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_10,
+        right_cle_in => right_cle_10,
+        subkey => subkey11,
+        left_cle_out => left_cle_11,
+        right_cle_out => right_cle_11
+    );
+
+    s24: round port map(
+        left_plain => left_plain_10,
+        right_plain => right_plain_10,
+        subkey => subkey11,
+        left_data_out => left_plain_11,
+        right_data_out => right_plain_11
+    );
+
+    s25: subkey_production generic map(
+        shifting_parameter => "10",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_11,
+        right_cle_in => right_cle_11,
+        subkey => subkey12,
+        left_cle_out => left_cle_12,
+        right_cle_out => right_cle_12
+    );
+
+    s26: round port map(
+        left_plain => left_plain_11,
+        right_plain => right_plain_11,
+        subkey => subkey12,
+        left_data_out => left_plain_12,
+        right_data_out => right_plain_12
+    );
+
+    s27: subkey_production generic map(
+        shifting_parameter => "10",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_12,
+        right_cle_in => right_cle_12,
+        subkey => subkey13,
+        left_cle_out => left_cle_13,
+        right_cle_out => right_cle_13
+    );
+
+    s28: round port map(
+        left_plain => left_plain_12,
+        right_plain => right_plain_12,
+        subkey => subkey13,
+        left_data_out => left_plain_13,
+        right_data_out => right_plain_13
+    );
+
+    s29: subkey_production generic map(
+        shifting_parameter => "10",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_13,
+        right_cle_in => right_cle_13,
+        subkey => subkey14,
+        left_cle_out => left_cle_14,
+        right_cle_out => right_cle_14
+    );
+
+    s30: round port map(
+        left_plain => left_plain_13,
+        right_plain => right_plain_13,
+        subkey => subkey14,
+        left_data_out => left_plain_14,
+        right_data_out => right_plain_14
+    );
+
+    s31: subkey_production generic map(
+        shifting_parameter => "10",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_14,
+        right_cle_in => right_cle_14,
+        subkey => subkey15,
+        left_cle_out => left_cle_15,
+        right_cle_out => right_cle_15
+    );
+
+    s32: round port map(
+        left_plain => left_plain_14,
+        right_plain => right_plain_14,
+        subkey => subkey15,
+        left_data_out => left_plain_15,
+        right_data_out => right_plain_15
+    );
+
+    s33: subkey_production generic map(
+        shifting_parameter => "01",
+        left_or_right => "0"
+    )
+    port map(
+        left_cle_in => left_cle_15,
+        right_cle_in => right_cle_15,
+        subkey => subkey16,
+        left_cle_out => left_cle_16,
+        right_cle_out => right_cle_16
+    );
+
+    s34: round port map(
+        left_plain => left_plain_15,
+        right_plain => right_plain_15,
+        subkey => subkey16,
+        left_data_out => left_plain_16,
+        right_data_out => right_plain_16
+    );
+
+    s35: swap_left_right_64_bits port map(
+        msg_left => left_plain_16,
+        msg_right => right_plain_16,
+        msg_out_left => swaped_plain_text_left,
+        msg_out_right => swaped_plain_text_right
+    );
+
+    s36: reverse_initial_permutation port map(
+        permuted_left_half => swaped_plain_text_left,
+        permuted_right_half => swaped_plain_text_right,
+        msg_cry => msg_cry
+    );
+
+end behavior;
+```
+
